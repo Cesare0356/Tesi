@@ -1,42 +1,38 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "starknet/IStarknetMessaging.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-// Define some custom error as an example.
-// It saves a lot's of space to use those custom error instead of strings.
-error InvalidPayload();
+/* ---------- Token di sconto -------------------------------------------------- */
 
-/**
-   @title Test contract to receive / send messages to starknet.
-*/
-contract ContractMsg {
+contract DiscountToken is ERC20, Ownable{
+    constructor() ERC20("Discount", "DSC") Ownable(msg.sender){}
 
-    //
-    IStarknetMessaging private _snMessaging;
-
-    /**
-       @notice Constructor.
-
-       @param snMessaging The address of Starknet Core contract, responsible
-       or messaging.
-    */
-    constructor(address snMessaging) {
-        _snMessaging = IStarknetMessaging(snMessaging);
+    function mint(address to, uint256 amount) external onlyOwner{
+        _mint(to, amount);
+    }
+    function burnFrom(address account, uint256 amount) public {
+        //_spendAllowance(account, msg.sender, amount);
+        _burn(account, amount);
     }
 
-    /**
-       @notice Sends a message to Starknet contract.
+}
 
-       @param contractAddress The contract's address on starknet.
-       @param selector The l1_handler function of the contract to call.
-       @param payload The serialized data to be sent.
+/* ---------- Gateway L1 <-> L2 ----------------------------------------------- */
 
-       @dev Consider that Cairo only understands felts252.
-       So the serialization on solidity must be adjusted. For instance, a uint256
-       must be split in two uint256 with low and high part to be understood by Cairo.
-    */
+contract ContractMsg {
+    IStarknetMessaging public immutable _snMessaging;
+    DiscountToken    public immutable discountToken;
+    address public immutable userAddress;
+
+    constructor(address starknetMessaging_, address useraddress) {
+        _snMessaging = IStarknetMessaging(starknetMessaging_);
+        userAddress = useraddress;
+        discountToken = new DiscountToken();
+    }
+
     function sendMessage(
         uint256 contractAddress,
         uint256 selector,
@@ -44,102 +40,38 @@ contract ContractMsg {
     )
         external
         payable
-    {
-        _snMessaging.sendMessageToL2{value: msg.value}(
-            contractAddress,
-            selector,
-            payload
-        );
-    }
+    {   
+        if (discountToken.balanceOf(userAddress) >= 1 ether) {
+            payload[0] = payload[0] / 2;
+            discountToken.burnFrom(userAddress, 1 ether);
+        }
 
-
-    /**
-       @notice A simple function that sends a message with a pre-determined payload.
-    */
-    function sendMessageValue(
-        uint256 contractAddress,
-        uint256 selector,
-        uint256 value
-    )
-        external
-        payable
-    {
-        uint256[] memory payload = new uint256[](1);
-        payload[0] = value;
+        uint256[] memory result = new uint256[](2);
+        result[0] = uint256(uint160(userAddress));
+        result[1] = payload[0];
 
         _snMessaging.sendMessageToL2{value: msg.value}(
             contractAddress,
             selector,
-            payload
+            result
         );
     }
-
-    /**
-       @notice Manually consumes a message that was received from L2.
-
-       @param fromAddress L2 contract (account) that has sent the message.
-       @param payload Payload of the message used to verify the hash.
-
-       @dev A message "receive" means that the message hash is registered as consumable.
-       One must provide the message content, to let Starknet Core contract verify the hash
-       and validate the message content before being consumed.
-    */
-    function consumeMessage(
-        uint256 fromAddress,
-        uint256[] calldata payload
-    )
-        external
-    {
-        // Will revert if the message is not consumable.
-        _snMessaging.consumeMessageFromL2(fromAddress, payload);
-
-        // The previous call returns the message hash (bytes32)
-        // that can be used if necessary.
-
-        // You can use the payload to do stuff here as you now know that the message is
-        // valid and safe to process.
-        // Remember that the payload contains cairo serialized data. So you must
-        // deserialize the payload depending on the data it contains.
-    }
-
-    /**
-       @notice Example of consuming a value received from L2.
-    */
+    
     function consumeMessageValue(
         uint256 fromAddress,
         uint256[] calldata payload
-    )
-        external
-    {
-        _snMessaging.consumeMessageFromL2(fromAddress, payload);
+    ) external {
 
-        // We expect the payload to contain only a felt252 value (which is a uint256 in solidity).
-        if (payload.length != 1) {
-            revert InvalidPayload();
-        }
+        _snMessaging.consumeMessageFromL2(
+            fromAddress,
+            payload
+        );
 
-        uint256 value = payload[0];
-        require(value > 0, "Invalid value");
-    }
-
-    /**
-       @notice Example of consuming a serialized struct from L2.
-    */
-    function consumeMessageStruct(
-        uint256 fromAddress,
-        uint256[] calldata payload
-    )
-        external
-    {
-        _snMessaging.consumeMessageFromL2(fromAddress, payload);
-
-        // We expect the payload to contain field `a` and `b` from `MyData`.
         if (payload.length != 2) {
-            revert InvalidPayload();
+            revert ("Payload invalido");
         }
-
-        uint256 a = payload[0];
-        uint256 b = payload[1];
-        require(a > 0 && b > 0, "Invalid value");
+        if(payload[1] == 1) {
+            discountToken.mint(address(uint160(payload[0])), 1 ether);
+        }
     }
 }

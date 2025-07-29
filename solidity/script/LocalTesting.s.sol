@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
 
-import "src/ContractMsg.sol";
-import "src/StarknetMessagingLocal.sol";
+import "../src/ContractMsg.sol";
+import "../src/StarknetMessagingLocal.sol";
 
 /**
    Deploys the ContractMsg and StarknetMessagingLocal contracts.
@@ -15,7 +15,7 @@ contract LocalSetup is Script {
 
     function run() public{
         uint256 deployerPrivateKey = vm.envUint("ACCOUNT_PRIVATE_KEY");
-
+        address pubkey = vm.envAddress("ACCOUNT_ADDRESS");
         string memory json = "local_testing";
 
         vm.startBroadcast(deployerPrivateKey);
@@ -23,7 +23,7 @@ contract LocalSetup is Script {
         address snLocalAddress = address(new StarknetMessagingLocal());
         vm.serializeString(json, "snMessaging_address", vm.toString(snLocalAddress));
 
-        address contractMsg = address(new ContractMsg(snLocalAddress));
+        address contractMsg = address(new ContractMsg(snLocalAddress, pubkey));
         vm.serializeString(json, "contractMsg_address", vm.toString(contractMsg));
 
         vm.stopBroadcast();
