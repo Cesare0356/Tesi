@@ -41,7 +41,7 @@ contract ContractMsg {
         external
         payable
     {   
-        if (discountToken.balanceOf(userAddress) >= 1 ether) {
+        if (discountToken.balanceOf(userAddress) == 1 ether) {
             payload[0] = payload[0] / 2;
             discountToken.burnFrom(userAddress, 1 ether);
         }

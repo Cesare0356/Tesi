@@ -31,7 +31,7 @@ contract Value is Script {
 
         // The address must be the contract's address that has sent the message.
         ContractMsg(_contractMsgAddress).consumeMessageValue(
-            0x039b409cb0299bb6f13a714a553ed733373fd36607d979bade367fb45aeab968,
+            _l2Contract,
             payload);
 
         vm.stopBroadcast();

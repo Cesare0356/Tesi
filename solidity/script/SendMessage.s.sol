@@ -31,8 +31,6 @@ contract Value is Script {
         uint256[] memory payload = new uint256[](1);
         payload[0] = 10;
 
-        // Remember that there is a cost of at least 20k wei to send a message.
-        // Let's send 30k here to ensure that we pay enough for our payload serialization.
         ContractMsg(_contractMsgAddress).sendMessage{value: 30000}(
             _l2ContractAddress,
             _l2Selector,
@@ -41,3 +39,4 @@ contract Value is Script {
         vm.stopBroadcast();
     }
 }
+    
