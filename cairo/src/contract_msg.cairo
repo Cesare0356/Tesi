@@ -23,7 +23,9 @@ mod contract_msg {
     use starknet::{EthAddress, SyscallResultTrait};
     use core::num::traits::Zero;
     use starknet::syscalls::send_message_to_l1_syscall;
-    use starknet::storage::Map;
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -53,6 +55,7 @@ mod contract_msg {
     #[storage]
     struct Storage {
         rev: Map<felt252, ReviewData>,
+        has_review: Map<starknet::EthAddress, bool>,
     }
 
     #[l1_handler]
@@ -72,8 +75,18 @@ mod contract_msg {
                 user_addr: user_address,
                 result: 1,
             };
-            
-            let caller:felt252 = to_address.into();
+            let already: bool = self.has_review.entry(user_address).read();
+            if(already) {
+                let resnorev: Result = Result {
+                    user_addr: user_address,
+                    result: 0,
+                };
+                let mut buf: Array<felt252> = array![];
+                resnorev.serialize(ref buf);
+                send_message_to_l1_syscall(to_address.into(), buf.span()).unwrap_syscall();
+                return;
+            }
+            let caller: felt252 = to_address.into();
             
             let rating_u8: u8 = rating.try_into().unwrap();
 
@@ -99,6 +112,7 @@ mod contract_msg {
 
             let mut buf: Array<felt252> = array![];
             res.serialize(ref buf);
+            self.has_review.entry(user_address).write(true);
             send_message_to_l1_syscall(to_address.into(), buf.span()).unwrap_syscall();
         }
     }

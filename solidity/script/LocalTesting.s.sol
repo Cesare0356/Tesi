@@ -15,7 +15,6 @@ contract LocalSetup is Script {
 
     function run() public{
         uint256 deployerPrivateKey = vm.envUint("ACCOUNT_PRIVATE_KEY");
-        address pubkey = vm.envAddress("ACCOUNT_ADDRESS");
         string memory json = "local_testing";
 
         vm.startBroadcast(deployerPrivateKey);
@@ -23,7 +22,7 @@ contract LocalSetup is Script {
         address snLocalAddress = address(new StarknetMessagingLocal());
         vm.serializeString(json, "snMessaging_address", vm.toString(snLocalAddress));
 
-        address contractMsg = address(new ContractMsg(snLocalAddress, pubkey));
+        address contractMsg = address(new ContractMsg(snLocalAddress));
         vm.serializeString(json, "contractMsg_address", vm.toString(contractMsg));
 
         vm.stopBroadcast();

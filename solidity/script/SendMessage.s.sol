@@ -28,8 +28,9 @@ contract Value is Script {
     function run() public{
         vm.startBroadcast(_privateKey);
 
-        uint256[] memory payload = new uint256[](1);
-        payload[0] = 10;
+        uint256[] memory payload = new uint256[](2);
+        payload[0] = uint256(uint160(_publicKey));
+        payload[1] = 10;
 
         ContractMsg(_contractMsgAddress).sendMessage{value: 30000}(
             _l2ContractAddress,

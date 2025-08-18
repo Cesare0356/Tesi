@@ -25,11 +25,9 @@ contract DiscountToken is ERC20, Ownable{
 contract ContractMsg {
     IStarknetMessaging public immutable _snMessaging;
     DiscountToken    public immutable discountToken;
-    address public immutable userAddress;
 
-    constructor(address starknetMessaging_, address useraddress) {
+    constructor(address starknetMessaging_) {
         _snMessaging = IStarknetMessaging(starknetMessaging_);
-        userAddress = useraddress;
         discountToken = new DiscountToken();
     }
 
@@ -41,14 +39,16 @@ contract ContractMsg {
         external
         payable
     {   
-        if (discountToken.balanceOf(userAddress) == 1 ether) {
-            payload[0] = payload[0] / 2;
-            discountToken.burnFrom(userAddress, 1 ether);
+        /*
+        if (discountToken.
+        balanceOf(address(uint160(payload[0]))) == 1 ether) {
+            payload[1] = payload[1] / 2;
+            discountToken.burnFrom(address(uint160(payload[0])), 1 ether);
         }
-
+        */
         uint256[] memory result = new uint256[](2);
-        result[0] = uint256(uint160(userAddress));
-        result[1] = payload[0];
+        result[0] = payload[0];
+        result[1] = payload[1];
 
         _snMessaging.sendMessageToL2{value: msg.value}(
             contractAddress,
