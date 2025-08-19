@@ -28,12 +28,13 @@ contract Value is Script {
     uint256 _privateKey;
     address _contractMsgAddress;
     uint256 _l2Contract;
-
+    uint256 _l2value;
     function setUp() public {
         _privateKey = vm.envUint("ACCOUNT_PRIVATE_KEY");
         _contractMsgAddress = vm.envAddress("CONTRACT_MSG_ADDRESS");
         _l2Contract = vm.envUint("L2_CONTRACT_ADDRESS");
         _publicKey = vm.envAddress("ACCOUNT_ADDRESS");
+        _l2value = vm.envUint("L2_VALUE");
     }
 
     function run() public{
@@ -41,7 +42,7 @@ contract Value is Script {
 
         uint256[] memory payload = new uint256[](2);
         payload[0] = uint256(uint160(_publicKey));
-        payload[1] = 1;
+        payload[1] = _l2value;
 
         ContractMsg(_contractMsgAddress).consumeMessageValue(
             _l2Contract,
