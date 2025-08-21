@@ -32,7 +32,7 @@ contract Value is Script {
         payload[0] = uint256(uint160(_publicKey));
         payload[1] = 10;
 
-        ContractMsg(_contractMsgAddress).sendMessage{value: 30000}(
+        ContractMsg(_contractMsgAddress).sendMessage{value: 100000000000000}(
             _l2ContractAddress,
             _l2Selector,
             payload);

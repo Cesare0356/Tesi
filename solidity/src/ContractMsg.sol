@@ -14,7 +14,6 @@ contract DiscountToken is ERC20, Ownable{
         _mint(to, amount);
     }
     function burnFrom(address account, uint256 amount) public {
-        //_spendAllowance(account, msg.sender, amount);
         _burn(account, amount);
     }
 

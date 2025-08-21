@@ -5,25 +5,40 @@ source katana.env
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOYMENT_FILE="${SCRIPT_DIR}/deployment_address.txt"
+CONTRACT_MSG_ADDRESS_FILE="${SCRIPT_DIR}/contract_msg_address.txt"
 
+# --- Controlli file input ---
 if [ ! -f "$DEPLOYMENT_FILE" ]; then
   echo "Errore: file ${DEPLOYMENT_FILE} non trovato." >&2
   exit 1
 fi
+if [ ! -f "$CONTRACT_MSG_ADDRESS_FILE" ]; then
+  echo "Errore: file ${CONTRACT_MSG_ADDRESS_FILE} non trovato." >&2
+  exit 1
+fi
 
+# --- Lettura e validazione indirizzi ---
 L2_CONTRACT_ADDRESS="$(tr -d ' \t\r\n' < "$DEPLOYMENT_FILE")"
 if ! echo "$L2_CONTRACT_ADDRESS" | grep -Eq '^0x[0-9a-fA-F]+$'; then
   echo "Errore: L2_CONTRACT_ADDRESS non valido in ${DEPLOYMENT_FILE}: '${L2_CONTRACT_ADDRESS}'" >&2
   exit 1
 fi
 
+CONTRACT_MSG_ADDRESS="$(tr -d ' \t\r\n' < "$CONTRACT_MSG_ADDRESS_FILE")"
+if ! echo "$CONTRACT_MSG_ADDRESS" | grep -Eq '^0x[0-9a-fA-F]+$'; then
+  echo "Errore: CONTRACT_MSG_ADDRESS non valido in ${CONTRACT_MSG_ADDRESS_FILE}: '${CONTRACT_MSG_ADDRESS}'" >&2
+  exit 1
+fi
+
+# --- Target env files ---
 SOLIDITY_DIR="../solidity"
 DOT_ENV_FILE="${SOLIDITY_DIR}/.env"
 ENV_FILE="${SOLIDITY_DIR}/env"
 ANVIL_ENV_FILE="${SOLIDITY_DIR}/anvil.env"
 FILES_TO_UPDATE=("$DOT_ENV_FILE" "$ENV_FILE" "$ANVIL_ENV_FILE")
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
+# --- sed portabile ---
+if [[ "${OSTYPE:-}" == "darwin"* ]]; then
   SED_INPLACE=(sed -i '')
 else
   SED_INPLACE=(sed -i)
@@ -47,18 +62,19 @@ upsert_env_var () {
 echo "Avvio invoke su L2..."
 echo
 echo "Contratto L2: ${L2_CONTRACT_ADDRESS}"
+echo "ContractMsg : ${CONTRACT_MSG_ADDRESS}"
 echo
 
+# --- Usa il VALORE dell'indirizzo, non il path del file ---
 INVOKE_OUTPUT=$(
   starkli invoke "$L2_CONTRACT_ADDRESS" leave_review \
     0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
-    0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+    "$CONTRACT_MSG_ADDRESS" \
     1 \
     4 0x63 0x69 0x61 0x6f \
   2>&1
 )
 
-printf "%s\n\n" "$INVOKE_OUTPUT"
 
 TX_HASH=$(printf "%s\n" "$INVOKE_OUTPUT" | grep -Eo '0x[0-9a-fA-F]{64}' | tail -n1)
 if [ -z "$TX_HASH" ]; then

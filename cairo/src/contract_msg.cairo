@@ -56,12 +56,14 @@ mod contract_msg {
     struct Storage {
         rev: Map<felt252, ReviewData>,
         has_review: Map<starknet::EthAddress, bool>,
+        is_authorized: Map<starknet::EthAddress, bool>,
     }
 
     #[l1_handler]
     fn msg_handler_value(ref self: ContractState, from_address: felt252, data: MyData) {
         assert(!data.value.is_zero(), 'Dato non valido');
         let l1_address: felt252 = data.useraddress.into();
+        self.is_authorized.write(data.useraddress, true);
         self.emit(ValueReceived {
             l1_address,
             value: data.value,
@@ -71,6 +73,12 @@ mod contract_msg {
     #[abi(embed_v0)]
     impl ReviewImpl of IRestaurantReview<ContractState> {
         fn leave_review(ref self: ContractState, user_address: EthAddress, to_address: EthAddress, rating: felt252, text: Array<felt252>) { 
+            let is_authorized: bool = self.is_authorized.entry(user_address).read();
+            if (!is_authorized) {
+                assert(is_authorized, 'Utente non autorizzato');
+                return;
+            }
+
             let res: Result = Result {
                 user_addr: user_address,
                 result: 1,
@@ -83,6 +91,7 @@ mod contract_msg {
                 };
                 let mut buf: Array<felt252> = array![];
                 resnorev.serialize(ref buf);
+                self.is_authorized.write(user_address, false);
                 send_message_to_l1_syscall(to_address.into(), buf.span()).unwrap_syscall();
                 return;
             }
@@ -109,9 +118,9 @@ mod contract_msg {
                 ratings: rating,
                 review: pack_short_string(text.clone()),
             });
-
             let mut buf: Array<felt252> = array![];
             res.serialize(ref buf);
+            self.is_authorized.write(user_address, false);
             self.has_review.entry(user_address).write(true);
             send_message_to_l1_syscall(to_address.into(), buf.span()).unwrap_syscall();
         }
