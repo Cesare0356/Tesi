@@ -27,6 +27,7 @@ if [[ -z "${ETH_RPC_URL:-}" ]]; then
   ETH_RPC_URL="${ETH_RPC_URL:-$ETH_RPC_URL_DEFAULT}"
 fi
 
+
 # sed portabile
 sed_inplace() {
   local pattern="$1"
